@@ -1,0 +1,67 @@
+﻿BOOKGEN — Vue d’ensemble (technique mais accessible)
+
+Résumé
+Bookgen est une plateforme de génération de livres illustrés par IA, pensée pour être scalable, asynchrone et orientée “jobs”. L’objectif est de découpler l’API qui reçoit les demandes utilisateur des workers GPU qui exécutent les générations, afin de pouvoir scaler proprement et de maîtriser les coûts.
+
+Flux principal (pipeline cible)
+1) Un utilisateur déclenche une génération (chapitre, image, entraînement LoRA, etc.).
+2) L’API crée un job et l’envoie dans une queue SQS “inference”.
+3) Un worker ML (ECS GPU) consomme la queue.
+4) Le worker met à jour l’état du job dans DynamoDB, exécute la génération, stocke le résultat dans S3.
+5) Le worker envoie un message de callback dans une queue SQS dédiée aux callbacks.
+
+Pourquoi ce design
+- Asynchrone: l’API ne bloque pas pendant la génération.
+- Scalabilité: on peut augmenter le nombre de workers en fonction de la charge.
+- Robustesse: chaque job a un état traçable (DynamoDB) et un résultat stocké (S3).
+- Coûts: les GPU étant chers, on scale l’AutoScaling Group à 0 quand il n’y a pas de travail.
+
+Infrastructure AWS (déjà en place)
+- VPC dédiée avec subnets publics/privés et NAT Gateway.
+- ECS Cluster (EC2 launch type) avec workers GPU (g5.xlarge).
+- SQS:
+  - bookgen-inference-queue (jobs entrants)
+  - bookgen-callbacks-queue (notifications sortantes)
+- DynamoDB:
+  - Table BookgenStories (PK: story_id)
+  - Champs principaux: status, job_type, created_at, updated_at, output_s3_key, error
+- S3:
+  - bookgen-uploads, bookgen-datasets, bookgen-lora, bookgen-chapters, bookgen-outputs
+- Logs:
+  - CloudWatch Logs /ecs/bookgen-ml-worker
+
+Worker ML (comportement actuel)
+- Long polling SQS (WaitTimeSeconds=20)
+- Boucle infinie (worker prod, ne s’arrête jamais si la queue est vide)
+- Backoff exponentiel quand la queue est vide
+- Gestion propre des SIGTERM/SIGINT
+- Processus actuel: FAKE SDXL (écrit un JSON dans S3)
+
+Statuts DynamoDB
+- queued
+- in_progress
+- completed
+- failed
+
+Objectifs à court terme
+- Nettoyage et fiabilisation de worker.py
+  - suppression de code dupliqué
+  - meilleure gestion d’erreurs
+  - logs structurés
+- Préparer la transition vers un vrai pipeline SDXL
+  - séparation claire orchestration / génération
+- Structurer le code ML
+  - /ml/worker
+  - /ml/pipelines
+  - /ml/models
+  - /ml/utils
+
+Principes de travail
+- Ne pas casser l’existant
+- Itération progressive, patchs ciblés
+- Priorité à la robustesse et l’observabilité
+
+Contact / contexte d’exécution
+- Worker Python exécuté dans ECS (subnets privés)
+- Accès Internet via NAT
+- Résultats et états persistés dans S3/DynamoDB

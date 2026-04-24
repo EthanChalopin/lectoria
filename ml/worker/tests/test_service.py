@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from ml.worker.service import WorkerService
 
@@ -32,7 +33,8 @@ class FakeTable:
 
 
 class WorkerServiceTests(unittest.TestCase):
-    def test_process_message_completed(self):
+    @patch("ml.worker.handlers.render_png_bytes", return_value=b"fake-png")
+    def test_process_message_completed(self, _mock_render_png_bytes):
         sqs = FakeSqsClient()
         s3 = FakeS3Client()
         table = FakeTable()

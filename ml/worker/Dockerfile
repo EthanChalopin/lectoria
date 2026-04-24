@@ -1,6 +1,11 @@
-FROM python:3.10-slim
+FROM pytorch/pytorch:2.4.1-cuda12.1-cudnn9-runtime
 
 WORKDIR /app
+
+ENV PYTHONUNBUFFERED=1
+ENV HF_HOME=/tmp/huggingface
+ENV TRANSFORMERS_CACHE=/tmp/huggingface
+ENV HUGGINGFACE_HUB_CACHE=/tmp/huggingface
 
 # Install dependencies.
 COPY ml/worker/requirements.txt .

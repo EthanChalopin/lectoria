@@ -6,8 +6,8 @@ resource "aws_ecs_task_definition" "ml_worker" {
   family                   = "bookgen-ml-worker"
   network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
-  cpu                      = "1024" # 1 vCPU logique pour ECS
-  memory                   = "8192" # 8 Go pour le conteneur
+  cpu                      = "4096"
+  memory                   = "14336"
 
   task_role_arn      = aws_iam_role.ecs_task_role.arn
   execution_role_arn = aws_iam_role.ecs_execution_role.arn
@@ -17,7 +17,7 @@ resource "aws_ecs_task_definition" "ml_worker" {
       name = "bookgen-ml-worker",
       # TODO: plus tard on mettra ici ton image ECR, ex:
       # image = "${aws_ecr_repository.utils.repository_url}:latest"
-      image     = "433101552109.dkr.ecr.eu-west-1.amazonaws.com/bookgen-utils:ml-worker-v1",
+      image     = "433101552109.dkr.ecr.eu-west-1.amazonaws.com/bookgen-utils:ml-worker-v3",
       essential = true,
 
       # On déclare ici le GPU pour ce conteneur
@@ -72,6 +72,26 @@ resource "aws_ecs_task_definition" "ml_worker" {
         {
           name  = "AWS_REGION",
           value = "eu-west-1"
+        },
+        {
+          name  = "HF_MODEL_ID",
+          value = "stabilityai/stable-diffusion-xl-base-1.0"
+        },
+        {
+          name  = "SDXL_DEFAULT_WIDTH",
+          value = "768"
+        },
+        {
+          name  = "SDXL_DEFAULT_HEIGHT",
+          value = "768"
+        },
+        {
+          name  = "SDXL_DEFAULT_STEPS",
+          value = "30"
+        },
+        {
+          name  = "SDXL_DEFAULT_GUIDANCE_SCALE",
+          value = "7.0"
         }
       ],
 

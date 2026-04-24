@@ -1,6 +1,17 @@
+from decimal import Decimal
 from datetime import datetime, timezone
 
 from botocore.exceptions import ClientError
+
+
+def _to_ddb_value(value):
+    if isinstance(value, float):
+        return Decimal(str(value))
+    if isinstance(value, list):
+        return [_to_ddb_value(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _to_ddb_value(item) for key, item in value.items()}
+    return value
 
 
 class StatusStore:
@@ -46,7 +57,7 @@ class StatusStore:
                 value_name = f":value{idx}"
                 update_expr.append(f"{key_name} = {value_name}")
                 expr_attr_names[key_name] = key
-                expr_attr_values[value_name] = value
+                expr_attr_values[value_name] = _to_ddb_value(value)
 
         self.table.update_item(
             Key={"story_id": story_id},

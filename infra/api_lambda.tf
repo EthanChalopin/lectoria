@@ -41,6 +41,13 @@ data "aws_iam_policy_document" "lambda_api_policy" {
 
   statement {
     actions = [
+      "s3:GetObject",
+    ]
+    resources = ["${aws_s3_bucket.outputs.arn}/*"]
+  }
+
+  statement {
+    actions = [
       "logs:CreateLogGroup",
       "logs:CreateLogStream",
       "logs:PutLogEvents",
@@ -82,11 +89,12 @@ resource "aws_lambda_function" "bookgen_api" {
       INFERENCE_QUEUE_URL = aws_sqs_queue.inference.url
       DDB_STORIES_TABLE   = aws_dynamodb_table.stories.name
 
-      BUCKET_CHAPTERS = aws_s3_bucket.chapters.bucket
-      BUCKET_DATASETS = aws_s3_bucket.datasets.bucket
-      BUCKET_LORA     = aws_s3_bucket.lora.bucket
-      BUCKET_OUTPUTS  = aws_s3_bucket.outputs.bucket
-      BUCKET_UPLOADS  = aws_s3_bucket.uploads.bucket
+      BUCKET_CHAPTERS            = aws_s3_bucket.chapters.bucket
+      BUCKET_DATASETS            = aws_s3_bucket.datasets.bucket
+      BUCKET_LORA                = aws_s3_bucket.lora.bucket
+      BUCKET_OUTPUTS             = aws_s3_bucket.outputs.bucket
+      BUCKET_UPLOADS             = aws_s3_bucket.uploads.bucket
+      SIGNED_URL_EXPIRES_SECONDS = "3600"
     }
   }
 }
@@ -98,6 +106,13 @@ resource "aws_lambda_function" "bookgen_api" {
 resource "aws_apigatewayv2_api" "http_api" {
   name          = "bookgen-http-api"
   protocol_type = "HTTP"
+
+  cors_configuration {
+    allow_headers = ["content-type"]
+    allow_methods = ["GET", "POST", "OPTIONS"]
+    allow_origins = ["*"]
+    max_age       = 3600
+  }
 }
 
 resource "aws_apigatewayv2_integration" "lambda_integration" {
@@ -111,6 +126,12 @@ resource "aws_apigatewayv2_integration" "lambda_integration" {
 resource "aws_apigatewayv2_route" "sdxl_jobs" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "POST /jobs/sdxl"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "job_status" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "GET /jobs/{job_id}"
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 

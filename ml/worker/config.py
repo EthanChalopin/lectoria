@@ -14,12 +14,16 @@ DDB_TABLE_NAME = os.environ.get("DDB_STORIES_TABLE", "BookgenStories")
 BUCKET_OUTPUTS = os.environ.get("BUCKET_OUTPUTS", "bookgen-outputs")
 HF_MODEL_ID = os.environ.get("HF_MODEL_ID", "stabilityai/stable-diffusion-xl-base-1.0")
 HF_TOKEN = os.environ.get("HF_TOKEN")
+STORYBOOK_OUTPUT_PREFIX = os.environ.get("STORYBOOK_OUTPUT_PREFIX", "stories")
+QWEN_CONTROL_INSTANCE_NAME = os.environ.get("QWEN_CONTROL_INSTANCE_NAME", "bookgen-ecs-gpu")
+QWEN_CONTROL_SERVICE_NAME = os.environ.get("QWEN_CONTROL_SERVICE_NAME", "bookgen-qwen")
+QWEN_CONTROL_ENABLED = os.environ.get("QWEN_CONTROL_ENABLED", "1") != "0"
 
 SDXL_DEFAULT_NEGATIVE_PROMPT = os.environ.get(
     "SDXL_DEFAULT_NEGATIVE_PROMPT",
     "blurry, low quality, deformed, disfigured, bad anatomy, extra limbs, duplicate",
 )
-SDXL_DEFAULT_WIDTH = int(os.environ.get("SDXL_DEFAULT_WIDTH", "768"))
-SDXL_DEFAULT_HEIGHT = int(os.environ.get("SDXL_DEFAULT_HEIGHT", "768"))
-SDXL_DEFAULT_STEPS = int(os.environ.get("SDXL_DEFAULT_STEPS", "30"))
-SDXL_DEFAULT_GUIDANCE_SCALE = float(os.environ.get("SDXL_DEFAULT_GUIDANCE_SCALE", "7.0"))
+SDXL_DEFAULT_WIDTH = int(os.environ.get("SDXL_DEFAULT_WIDTH", "512"))
+SDXL_DEFAULT_HEIGHT = int(os.environ.get("SDXL_DEFAULT_HEIGHT", "512"))
+SDXL_DEFAULT_STEPS = int(os.environ.get("SDXL_DEFAULT_STEPS", "20"))
+SDXL_DEFAULT_GUIDANCE_SCALE = float(os.environ.get("SDXL_DEFAULT_GUIDANCE_SCALE", "6.5"))

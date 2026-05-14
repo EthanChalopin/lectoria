@@ -8,5 +8,7 @@ class AwsClients:
         self.session = session or boto3.Session(region_name=AWS_REGION)
         self.sqs = self.session.client("sqs")
         self.s3 = self.session.client("s3")
+        self.ssm = self.session.client("ssm")
+        self.ec2 = self.session.client("ec2")
         dynamodb = self.session.resource("dynamodb")
         self.stories_table = dynamodb.Table(DDB_TABLE_NAME)

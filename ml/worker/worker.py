@@ -7,6 +7,7 @@ from ml.worker.aws_clients import AwsClients
 from ml.worker.config import INFERENCE_QUEUE_URL
 from ml.worker.logging_utils import LOGGER, log_event
 from ml.worker.message_schema import JobMessage
+from ml.worker.qwen_control import QwenHostController
 from ml.worker.service import WorkerService
 
 
@@ -29,6 +30,7 @@ def main_loop():
         sqs_client=clients.sqs,
         s3_client=clients.s3,
         stories_table=clients.stories_table,
+        qwen_controller=QwenHostController(ec2_client=clients.ec2, ssm_client=clients.ssm),
     )
 
     log_event("info", "worker_start", component="bookgen-ml-worker", mode="fake_sdxl")

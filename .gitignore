@@ -29,6 +29,8 @@ override.tf.json
 *.zip
 *.tar
 *.tar.gz
+dist/
+*.tsbuildinfo
 
 # ML artifacts
 *.safetensors

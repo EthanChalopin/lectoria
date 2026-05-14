@@ -54,10 +54,11 @@ resource "aws_iam_policy" "ecs_task_policy" {
         Resource = "*"
       },
 
-      # SQS: read inference queue
+      # SQS: read and enqueue inference jobs
       {
         Effect = "Allow",
         Action = [
+          "sqs:SendMessage",
           "sqs:ReceiveMessage",
           "sqs:DeleteMessage",
           "sqs:GetQueueAttributes",
@@ -85,6 +86,17 @@ resource "aws_iam_policy" "ecs_task_policy" {
           "logs:PutLogEvents"
         ],
         Resource = "*"
+      },
+
+      # Control the host-side Qwen service over SSM
+      {
+        Effect = "Allow",
+        Action = [
+          "ssm:SendCommand",
+          "ssm:GetCommandInvocation",
+          "ec2:DescribeInstances"
+        ],
+        Resource = "*"
       }
     ]
   })
@@ -95,6 +107,11 @@ resource "aws_iam_role_policy_attachment" "ecs_task_attach" {
   role       = aws_iam_role.ecs_task_role.name
   policy_arn = aws_iam_policy.ecs_task_policy.arn
 }
+resource "aws_iam_role_policy_attachment" "ecs_instance_role_ssm_attach" {
+  role       = aws_iam_role.ecs_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 
 ##############################################
 # IAM — ECS Execution Role 

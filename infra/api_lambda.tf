@@ -129,6 +129,18 @@ resource "aws_apigatewayv2_route" "sdxl_jobs" {
   target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
 }
 
+resource "aws_apigatewayv2_route" "story_jobs" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "POST /jobs/story"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+}
+
+resource "aws_apigatewayv2_route" "story_images" {
+  api_id    = aws_apigatewayv2_api.http_api.id
+  route_key = "POST /jobs/{job_id}/images"
+  target    = "integrations/${aws_apigatewayv2_integration.lambda_integration.id}"
+}
+
 resource "aws_apigatewayv2_route" "job_status" {
   api_id    = aws_apigatewayv2_api.http_api.id
   route_key = "GET /jobs/{job_id}"

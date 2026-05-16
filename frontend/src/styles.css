@@ -94,6 +94,36 @@ textarea {
   resize: vertical;
 }
 
+.hidden-file-input {
+  display: none;
+}
+
+.dropzone {
+  width: 100%;
+  display: grid;
+  gap: 6px;
+  text-align: left;
+  border-radius: 16px;
+  border: 1px dashed rgba(255, 236, 204, 0.2);
+  background: rgba(12, 29, 36, 0.9);
+  color: #eef3f1;
+}
+
+.dropzone:hover:not(:disabled) {
+  transform: none;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+}
+
+.dropzone-active {
+  border-color: #f4c66f;
+  background: rgba(244, 198, 111, 0.12);
+}
+
+.dropzone span {
+  color: #c0d2cc;
+  font-weight: 400;
+}
+
 .compact-textarea {
   min-height: 96px;
 }

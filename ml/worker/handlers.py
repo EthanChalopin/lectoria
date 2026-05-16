@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from ml.pipelines.qwen_chapters import build_chapter, build_story_plan
-from ml.pipelines.sdxl import render_png_bytes
+from ml.pipelines.sdxl import render_png_bytes, unload_pipeline
 from ml.worker.config import (
     BUCKET_OUTPUTS,
     SDXL_DEFAULT_GUIDANCE_SCALE,
@@ -73,6 +73,7 @@ def handle_sdxl(job, *, s3_client, **_kwargs) -> dict:
 
 
 def handle_story_plan(job, *, s3_client, sqs_client, qwen_controller=None, **_kwargs) -> dict:
+    unload_pipeline()
     if qwen_controller is not None:
         qwen_controller.ensure_started(wait_until_ready=True)
 
@@ -277,6 +278,7 @@ def handle_chapter_image(job, *, s3_client, sqs_client, qwen_controller=None, **
         next_manifest["status"] = "completed"
         next_manifest["phase"] = "images_completed"
         current_stage = "completed"
+        unload_pipeline()
         if qwen_controller is not None:
             qwen_controller.ensure_started(wait_until_ready=False)
 

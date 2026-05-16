@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { ChangeEvent, DragEvent, useMemo, useRef, useState } from "react";
 
 type JobStatus =
   | "idle"
@@ -51,41 +51,32 @@ type JobResponse = {
 
 type FormState = {
   apiUrl: string;
-  bookPrompt: string;
-  language: string;
-  tone: string;
-  targetAge: string;
-  chapterCount: number;
-  imageStyle: string;
   childName: string;
-  childAge: number;
-  childTraits: string;
-  favoriteThemes: string;
-  fearsToAvoid: string;
-  importantPeople: string;
-  settingPreferences: string;
-  moralOrGoal: string;
+  bookPrompt: string;
 };
 
 const STORAGE_KEY = "bookgen_api_url";
 
-const DEFAULT_FORM: FormState = {
-  apiUrl: localStorage.getItem(STORAGE_KEY) ?? "",
-  bookPrompt:
-    "Une aventure douce dans une foret ancienne ou un enfant decouvre un secret lumineux qui l'aide a grandir.",
+const DEFAULTS = {
   language: "fr",
   tone: "doux, merveilleux, rassurant",
   targetAge: "6-8",
-  chapterCount: 4,
+  chapterCount: 2,
   imageStyle: "storybook, warm light, painterly children's illustration",
-  childName: "Lina",
   childAge: 7,
-  childTraits: "curieuse, sensible, courageuse",
+  childTraits: "curieux, sensible, courageux",
   favoriteThemes: "foret, animaux, magie, amitie",
   fearsToAvoid: "violence, monstres effrayants",
   importantPeople: "Mamie Rose, Petit Renard",
   settingPreferences: "clairiere, cabane en bois, lac brillant",
   moralOrGoal: "prendre confiance en soi et apprendre a demander de l'aide",
+};
+
+const DEFAULT_FORM: FormState = {
+  apiUrl: localStorage.getItem(STORAGE_KEY) ?? "",
+  childName: "Lina",
+  bookPrompt:
+    "Une aventure douce dans une foret ancienne ou l'enfant decouvre un secret lumineux qui l'aide a grandir.",
 };
 
 function App() {
@@ -96,6 +87,8 @@ function App() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState(false);
   const [storyManifest, setStoryManifest] = useState<StoryManifest | null>(null);
+  const [isDragActive, setIsDragActive] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const normalizedApiUrl = useMemo(
     () => form.apiUrl.trim().replace(/\/$/, ""),
@@ -112,19 +105,19 @@ function App() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         book_prompt: form.bookPrompt.trim(),
-        language: form.language.trim(),
-        tone: form.tone.trim(),
-        target_age: form.targetAge.trim(),
-        chapter_count: Number(form.chapterCount),
-        image_style: form.imageStyle.trim(),
+        language: DEFAULTS.language,
+        tone: DEFAULTS.tone,
+        target_age: DEFAULTS.targetAge,
+        chapter_count: DEFAULTS.chapterCount,
+        image_style: DEFAULTS.imageStyle,
         child_name: form.childName.trim(),
-        child_age: Number(form.childAge),
-        child_traits: form.childTraits,
-        favorite_themes: form.favoriteThemes,
-        fears_to_avoid: form.fearsToAvoid,
-        important_people: form.importantPeople,
-        setting_preferences: form.settingPreferences,
-        moral_or_goal: form.moralOrGoal.trim(),
+        child_age: DEFAULTS.childAge,
+        child_traits: DEFAULTS.childTraits,
+        favorite_themes: DEFAULTS.favoriteThemes,
+        fears_to_avoid: DEFAULTS.fearsToAvoid,
+        important_people: DEFAULTS.importantPeople,
+        setting_preferences: DEFAULTS.settingPreferences,
+        moral_or_goal: DEFAULTS.moralOrGoal,
       }),
     });
 
@@ -194,9 +187,38 @@ function App() {
     }, 5000);
   }
 
+  async function loadPromptFile(file: File) {
+    const text = await file.text();
+    updateField("bookPrompt", text.trim());
+    setStatusText(`Prompt loaded from ${file.name}.`);
+  }
+
+  const handleFileSelection = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+    await loadPromptFile(file);
+    event.target.value = "";
+  };
+
+  const handleDrop = async (event: DragEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    setIsDragActive(false);
+    const file = event.dataTransfer.files?.[0];
+    if (!file) {
+      return;
+    }
+    await loadPromptFile(file);
+  };
+
   const handleGenerate = async () => {
     if (!normalizedApiUrl) {
       setStatusText("Please enter the API URL first.");
+      return;
+    }
+    if (!form.childName.trim() || !form.bookPrompt.trim()) {
+      setStatusText("Please enter the child's name and a prompt.");
       return;
     }
 
@@ -252,14 +274,10 @@ function App() {
     <main className="app-shell">
       <section className="panel">
         <div className="eyebrow">Bookgen Studio</div>
-        <h1>Personalized chapter generation</h1>
+        <h1>Histoire en deux clics</h1>
         <p className="muted">
-          First generate all chapter text, then render chapter images in a second pass that keeps
-          the GPU workload manageable.
-        </p>
-        <p className="muted">
-          The worker now pauses and resumes the host-side Qwen service automatically before and
-          after image rendering on a single GPU instance.
+          Entre juste le nom de l'enfant et ton idee d'histoire. Tu peux aussi glisser un fichier
+          texte de prompt dans la zone prevue.
         </p>
 
         <label className="field">
@@ -273,140 +291,58 @@ function App() {
         </label>
 
         <label className="field">
-          <span>Global prompt</span>
+          <span>Nom de l'enfant</span>
+          <input
+            type="text"
+            value={form.childName}
+            onChange={(event) => updateField("childName", event.target.value)}
+            placeholder="Lina"
+          />
+        </label>
+
+        <label className="field">
+          <span>Prompt</span>
           <textarea
             value={form.bookPrompt}
             onChange={(event) => updateField("bookPrompt", event.target.value)}
+            placeholder="Decris l'univers, l'ambiance et l'aventure que tu veux raconter."
           />
         </label>
 
-        <div className="row">
-          <label className="field">
-            <span>Language</span>
-            <input
-              type="text"
-              value={form.language}
-              onChange={(event) => updateField("language", event.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>Tone</span>
-            <input
-              type="text"
-              value={form.tone}
-              onChange={(event) => updateField("tone", event.target.value)}
-            />
-          </label>
+        <div className="field">
+          <span>Glisser-deposer un prompt texte</span>
+          <button
+            type="button"
+            className={`dropzone ${isDragActive ? "dropzone-active" : ""}`}
+            onDragOver={(event) => {
+              event.preventDefault();
+              setIsDragActive(true);
+            }}
+            onDragLeave={() => setIsDragActive(false)}
+            onDrop={(event) => {
+              handleDrop(event).catch((error: Error) => {
+                setStatusText(`Error: ${error.message}`);
+                setJobStatus("failed");
+              });
+            }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <strong>Glisse un fichier `.txt` ici</strong>
+            <span>ou clique pour en choisir un depuis le projet.</span>
+          </button>
+          <input
+            ref={fileInputRef}
+            className="hidden-file-input"
+            type="file"
+            accept=".txt,text/plain"
+            onChange={(event) => {
+              handleFileSelection(event).catch((error: Error) => {
+                setStatusText(`Error: ${error.message}`);
+                setJobStatus("failed");
+              });
+            }}
+          />
         </div>
-
-        <div className="row">
-          <label className="field">
-            <span>Target age</span>
-            <input
-              type="text"
-              value={form.targetAge}
-              onChange={(event) => updateField("targetAge", event.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>Chapters</span>
-            <input
-              type="number"
-              min={1}
-              max={12}
-              value={form.chapterCount}
-              onChange={(event) => updateField("chapterCount", Number(event.target.value))}
-            />
-          </label>
-        </div>
-
-        <label className="field">
-          <span>Image style</span>
-          <input
-            type="text"
-            value={form.imageStyle}
-            onChange={(event) => updateField("imageStyle", event.target.value)}
-          />
-        </label>
-
-        <div className="section-title">Personal profile</div>
-
-        <div className="row">
-          <label className="field">
-            <span>Child name</span>
-            <input
-              type="text"
-              value={form.childName}
-              onChange={(event) => updateField("childName", event.target.value)}
-            />
-          </label>
-          <label className="field">
-            <span>Child age</span>
-            <input
-              type="number"
-              min={1}
-              max={18}
-              value={form.childAge}
-              onChange={(event) => updateField("childAge", Number(event.target.value))}
-            />
-          </label>
-        </div>
-
-        <label className="field">
-          <span>Traits</span>
-          <input
-            type="text"
-            value={form.childTraits}
-            onChange={(event) => updateField("childTraits", event.target.value)}
-            placeholder="curieuse, calme, imaginative"
-          />
-        </label>
-
-        <label className="field">
-          <span>Favorite themes</span>
-          <input
-            type="text"
-            value={form.favoriteThemes}
-            onChange={(event) => updateField("favoriteThemes", event.target.value)}
-            placeholder="dragons, forets, amitie"
-          />
-        </label>
-
-        <label className="field">
-          <span>Fears to avoid</span>
-          <input
-            type="text"
-            value={form.fearsToAvoid}
-            onChange={(event) => updateField("fearsToAvoid", event.target.value)}
-          />
-        </label>
-
-        <label className="field">
-          <span>Important people</span>
-          <input
-            type="text"
-            value={form.importantPeople}
-            onChange={(event) => updateField("importantPeople", event.target.value)}
-          />
-        </label>
-
-        <label className="field">
-          <span>Preferred settings</span>
-          <input
-            type="text"
-            value={form.settingPreferences}
-            onChange={(event) => updateField("settingPreferences", event.target.value)}
-          />
-        </label>
-
-        <label className="field">
-          <span>Moral or goal</span>
-          <textarea
-            className="compact-textarea"
-            value={form.moralOrGoal}
-            onChange={(event) => updateField("moralOrGoal", event.target.value)}
-          />
-        </label>
 
         <button type="button" onClick={handleGenerate} disabled={isGenerating}>
           {isGenerating ? "Generating..." : "Generate Story Text"}
@@ -479,8 +415,8 @@ function App() {
           <div className="empty-state">
             <h2>Story workspace</h2>
             <p>
-              First generate the story text. Then launch image generation in a separate phase to
-              avoid GPU memory conflicts.
+              Generate the story text first, then launch image generation when the chapters are
+              ready.
             </p>
           </div>
         )}

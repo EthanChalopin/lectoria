@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import textwrap
 import urllib.error
 import urllib.request
@@ -81,14 +82,53 @@ def _extract_json_content(response: dict[str, Any]) -> dict[str, Any]:
     if not isinstance(content, str):
         raise RuntimeError("Qwen response content must be a string")
 
+    content = content.strip()
+
+    fenced_match = re.search(r"```(?:json)?\s*(\{.*\})\s*```", content, flags=re.DOTALL)
+    if fenced_match:
+        content = fenced_match.group(1).strip()
+
     try:
         return json.loads(content)
     except json.JSONDecodeError:
-        start = content.find("{")
-        end = content.rfind("}")
-        if start == -1 or end == -1 or end <= start:
+        json_fragment = _extract_first_json_object(content)
+        if json_fragment is None:
             raise RuntimeError("Qwen response did not contain valid JSON") from None
-        return json.loads(content[start : end + 1])
+        return json.loads(json_fragment)
+
+
+def _extract_first_json_object(content: str) -> str | None:
+    start = content.find("{")
+    if start == -1:
+        return None
+
+    depth = 0
+    in_string = False
+    escape = False
+
+    for index in range(start, len(content)):
+        char = content[index]
+        if in_string:
+            if escape:
+                escape = False
+            elif char == "\\":
+                escape = True
+            elif char == '"':
+                in_string = False
+            continue
+
+        if char == '"':
+            in_string = True
+            continue
+        if char == "{":
+            depth += 1
+            continue
+        if char == "}":
+            depth -= 1
+            if depth == 0:
+                return content[start : index + 1]
+
+    return None
 
 
 def _chat_json(*, system_prompt: str, user_payload: dict[str, Any], temperature: float) -> dict[str, Any]:

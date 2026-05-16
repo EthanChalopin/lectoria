@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import gc
 from io import BytesIO
 
 from ml.worker.config import HF_MODEL_ID, HF_TOKEN
@@ -32,6 +33,27 @@ def get_pipeline():
     if _PIPELINE is None:
         _PIPELINE = _build_pipeline()
     return _PIPELINE
+
+
+def unload_pipeline() -> None:
+    global _PIPELINE
+    if _PIPELINE is None:
+        return
+
+    try:
+        import torch
+
+        _PIPELINE.to("cpu")
+        del _PIPELINE
+        _PIPELINE = None
+        gc.collect()
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+            if hasattr(torch.cuda, "ipc_collect"):
+                torch.cuda.ipc_collect()
+    except Exception:
+        _PIPELINE = None
+        gc.collect()
 
 
 def generate_image(

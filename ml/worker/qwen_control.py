@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import time
 
+from botocore.exceptions import ClientError
+
 from ml.worker.config import (
     QWEN_CONTROL_ENABLED,
     QWEN_CONTROL_INSTANCE_NAME,
@@ -72,7 +74,14 @@ class QwenHostController:
     def _wait_for_command(self, *, instance_id: str, command_id: str, timeout_s: int = 360) -> None:
         deadline = time.time() + timeout_s
         while time.time() < deadline:
-            invocation = self.ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
+            try:
+                invocation = self.ssm.get_command_invocation(CommandId=command_id, InstanceId=instance_id)
+            except ClientError as exc:
+                error_code = exc.response.get("Error", {}).get("Code")
+                if error_code == "InvocationDoesNotExist":
+                    time.sleep(2)
+                    continue
+                raise
             status = invocation["Status"]
             if status == "Success":
                 return
